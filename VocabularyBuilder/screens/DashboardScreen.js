@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { ThemeContext } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const DashboardScreen = () => {
-  const { theme } = useContext(ThemeContext);
-
+  const { theme } = useTheme();
   const navigation = useNavigation();
   const [vocabularyCount, setVocabularyCount] = useState(0);
   const [lastQuizScore, setLastQuizScore] = useState(null);

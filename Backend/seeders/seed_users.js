@@ -12,11 +12,15 @@ async function seedUsers() {
         username: "user1",
         email: "user1@example.com",
         password: "password123", // Will be hashed by the model's pre('save') hook
+        firstName: "John", // New field
+        lastName: "Doe", // New field
       },
       {
         username: "user2",
         email: "user2@example.com",
         password: "anotherpassword",
+        firstName: "Jane", // New field
+        lastName: "Smith", // New field
       },
     ];
 

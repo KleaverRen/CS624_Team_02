@@ -23,6 +23,18 @@ const UserSchema = new mongoose.Schema({
     required: true,
     minlength: 6,
   },
+  firstName: {
+    // <-- New field
+    type: String,
+    trim: true,
+    required: true, // Uncomment if you want to make it mandatory
+  },
+  lastName: {
+    // <-- New field
+    type: String,
+    trim: true,
+    required: true, // Uncomment if you want to make it mandatory
+  },
   createdAt: {
     type: Date,
     default: Date.now,

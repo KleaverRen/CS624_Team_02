@@ -1,4 +1,3 @@
-import React, { useContext } from "react";
 import {
   StyleSheet,
   View,
@@ -8,11 +7,11 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { ThemeContext } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const { theme } = useContext(ThemeContext);
+  const { theme } = useTheme();
 
   const navigationItems = [
     {
@@ -36,7 +35,7 @@ const HomeScreen = () => {
     {
       id: "progress",
       title: "Progress",
-      icon: "chart-bar",
+      icon: "bars",
       onPress: () => navigation.navigate("ProgressTab"),
     },
     {

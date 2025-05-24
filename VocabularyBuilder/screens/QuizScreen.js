@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ThemeContext } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const NUMBER_OF_QUESTIONS = 5; // You can adjust this number
 
 const QuizScreen = () => {
-  const { theme } = useContext(ThemeContext);
+  const { theme } = useTheme();
 
   const [vocabulary, setVocabulary] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     marginBottom: 20,
-    color: "#eee",
+    color: "black",
   },
   darkTitle: {
     fontSize: 24,

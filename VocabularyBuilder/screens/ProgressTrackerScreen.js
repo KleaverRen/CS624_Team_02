@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { StyleSheet, View, Text } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LineChart } from "react-native-chart-kit";
-import { ThemeContext } from "../contexts/ThemeContext";
+import { useTheme } from "../contexts/ThemeContext";
 
 const ProgressTrackerScreen = () => {
-  const { theme } = useContext(ThemeContext);
+  const { theme } = useTheme();
   const [dailyWordGoal, setDailyWordGoal] = useState(null);
   const [wordsAddedTodayCount, setWordsAddedTodayCount] = useState(0);
   const [wordsLearnedCount, setWordsLearnedCount] = useState(0);

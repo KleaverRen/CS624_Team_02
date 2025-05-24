@@ -51,3 +51,34 @@ exports.deleteWord = async (req, res) => {
     res.status(500).json({ message: "Failed to delete word" });
   }
 };
+
+exports.updateWord = async (req, res) => {
+  const { id } = req.params; // Word ID from URL parameter
+  const { word, definition } = req.body; // Updated word and definition from request body
+  const userId = req.userId; // From authMiddleware
+
+  try {
+    const updatedVocabulary = await Vocabulary.findOneAndUpdate(
+      { _id: id, userId: userId }, // Find by ID AND userId to ensure ownership
+      { word, definition },
+      { new: true, runValidators: true } // Return the updated document and run schema validators
+    );
+
+    if (!updatedVocabulary) {
+      return res
+        .status(404)
+        .json({
+          message: "Word not found or you do not have permission to update it.",
+        });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Word updated successfully", word: updatedVocabulary });
+  } catch (error) {
+    console.error("Error updating word:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to update word", error: error.message });
+  }
+};

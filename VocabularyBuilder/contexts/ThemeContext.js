@@ -1,43 +1,121 @@
-import React, { createContext, useState, useEffect } from "react";
+// import React, { createContext, useState, useEffect } from "react";
+// import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// export const ThemeContext = createContext();
+
+// export const ThemeProvider = ({ children }) => {
+//   const [theme, setTheme] = useState("light");
+
+//   useEffect(() => {
+//     loadTheme();
+//   }, []);
+
+//   const loadTheme = async () => {
+//     try {
+//       const storedTheme = await AsyncStorage.getItem("appTheme");
+//       if (storedTheme) {
+//         setTheme(storedTheme);
+//       }
+//     } catch (error) {
+//       console.error("Error loading theme:", error);
+//     }
+//   };
+
+//   const saveTheme = async (newTheme) => {
+//     try {
+//       await AsyncStorage.setItem("appTheme", newTheme);
+//       setTheme(newTheme);
+//     } catch (error) {
+//       console.error("Error saving theme:", error);
+//     }
+//   };
+
+//   const toggleTheme = () => {
+//     const newTheme = theme === "light" ? "dark" : "light";
+//     saveTheme(newTheme);
+//   };
+
+//   return (
+//     <ThemeContext.Provider
+//       style={{ pointerEvents: "none" }}
+//       value={{ theme, toggleTheme }}
+//     >
+//       {children}
+//     </ThemeContext.Provider>
+//   );
+// };
+// context/ThemeContext.js
+import React, { createContext, useState, useContext, useEffect } from "react";
+import { useColorScheme } from "react-native"; // To detect system theme preference
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const ThemeContext = createContext();
+const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState("light");
+  const systemColorScheme = useColorScheme(); // 'light' or 'dark' or null
+  const [theme, setTheme] = useState(systemColorScheme || "light"); // Default to system, or 'light'
 
   useEffect(() => {
-    loadTheme();
-  }, []);
-
-  const loadTheme = async () => {
-    try {
-      const storedTheme = await AsyncStorage.getItem("appTheme");
-      if (storedTheme) {
-        setTheme(storedTheme);
+    // Load theme preference from AsyncStorage on app start
+    const loadThemePreference = async () => {
+      try {
+        const storedTheme = await AsyncStorage.getItem("userTheme");
+        if (storedTheme) {
+          setTheme(storedTheme);
+        } else if (systemColorScheme) {
+          // If no stored preference, use system preference
+          setTheme(systemColorScheme);
+        }
+      } catch (error) {
+        console.error("Failed to load theme preference:", error);
       }
-    } catch (error) {
-      console.error("Error loading theme:", error);
-    }
-  };
+    };
+    loadThemePreference();
+  }, [systemColorScheme]); // Re-run if system scheme changes (e.g., user changes system theme)
 
-  const saveTheme = async (newTheme) => {
-    try {
-      await AsyncStorage.setItem("appTheme", newTheme);
-      setTheme(newTheme);
-    } catch (error) {
-      console.error("Error saving theme:", error);
-    }
-  };
-
-  const toggleTheme = () => {
+  const toggleTheme = async () => {
     const newTheme = theme === "light" ? "dark" : "light";
-    saveTheme(newTheme);
+    setTheme(newTheme);
+    try {
+      await AsyncStorage.setItem("userTheme", newTheme); // Save preference
+    } catch (error) {
+      console.error("Failed to save theme preference:", error);
+    }
+  };
+
+  const currentTheme = {
+    mode: theme,
+    colors: {
+      primary: theme === "dark" ? "#BB86FC" : "#6200EE", // Purple
+      secondary: theme === "dark" ? "#03DAC6" : "#03DAC6", // Teal
+      background: theme === "dark" ? "#121212" : "#E0F2F7", // Dark/Light background
+      cardBackground: theme === "dark" ? "#1E1E1E" : "#FFFFFF", // Dark/Light card background
+      text: theme === "dark" ? "#E0E0E0" : "#333333", // Dark/Light text
+      subText: theme === "dark" ? "#AAAAAA" : "#666666", // Dark/Light secondary text
+      inputBackground: theme === "dark" ? "#2C2C2C" : "#F0F0F0", // Dark/Light input background
+      inputBorder: theme === "dark" ? "#555555" : "#CCCCCC", // Dark/Light input border
+      link: theme === "dark" ? "#BB86FC" : "#007bff", // Link color
+      // Add more colors as needed for other UI elements
+    },
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme: currentTheme.mode,
+        colors: currentTheme.colors,
+        toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
+};
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within a ThemeProvider");
+  }
+  return context;
 };
