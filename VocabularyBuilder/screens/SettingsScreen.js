@@ -193,7 +193,12 @@ const SettingsScreen = () => {
         </TouchableOpacity>
       </View>
       <View style={styles.logoutButtonContainer}>
-        <Button title="Logout" onPress={handleShowLogoutModal} color="red" />
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => handleShowLogoutModal(true)}
+        >
+          <Text style={styles.actionButtonText}>LOGOUT</Text>
+        </TouchableOpacity>
       </View>
       {/* Logout Confirmation Modal */}
       <Modal
@@ -251,6 +256,14 @@ const styles = StyleSheet.create({
     marginTop: "auto", // Push the logout button to the bottom
     width: "100%", // Make the button take up most of the width
     marginBottom: 20,
+  },
+  logoutButton: {
+    backgroundColor: "red",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontSize: 24,

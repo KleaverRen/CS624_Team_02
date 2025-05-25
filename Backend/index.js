@@ -26,6 +26,7 @@ app.use(cors());
 //       "http://localhost:3000",
 //       "http://localhost:3002",
 //       "https://msagnfm-rothpanhaseth-8081.exp.direct/",
+//       "0.0.0.0",
 //       "*",
 //     ], // Added '*' for File 2 and existing origins
 //     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -77,6 +78,6 @@ mongoose
   });
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });

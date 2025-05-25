@@ -65,11 +65,9 @@ exports.updateWord = async (req, res) => {
     );
 
     if (!updatedVocabulary) {
-      return res
-        .status(404)
-        .json({
-          message: "Word not found or you do not have permission to update it.",
-        });
+      return res.status(404).json({
+        message: "Word not found or you do not have permission to update it.",
+      });
     }
 
     res

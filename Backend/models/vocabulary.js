@@ -1,3 +1,4 @@
+// models/vocabulary.js
 const mongoose = require("mongoose");
 
 const VocabularySchema = new mongoose.Schema({

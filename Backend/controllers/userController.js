@@ -1,6 +1,7 @@
 // controllers/userController.js
 const User = require("../models/user"); // Assuming you have a User model
 
+// getUserProfile function to fetch user profile data
 exports.getUserProfile = async (req, res) => {
   try {
     // req.userId is set by the authMiddleware from the JWT token

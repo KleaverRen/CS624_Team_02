@@ -71,6 +71,7 @@ exports.login = async (req, res) => {
   }
 };
 
+// Logout Controller
 exports.logout = async (req, res) => {
   try {
     const token = req.header("Authorization").replace("Bearer ", "");

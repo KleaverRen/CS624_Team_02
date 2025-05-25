@@ -1,50 +1,3 @@
-// import React, { createContext, useState, useEffect } from "react";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// export const ThemeContext = createContext();
-
-// export const ThemeProvider = ({ children }) => {
-//   const [theme, setTheme] = useState("light");
-
-//   useEffect(() => {
-//     loadTheme();
-//   }, []);
-
-//   const loadTheme = async () => {
-//     try {
-//       const storedTheme = await AsyncStorage.getItem("appTheme");
-//       if (storedTheme) {
-//         setTheme(storedTheme);
-//       }
-//     } catch (error) {
-//       console.error("Error loading theme:", error);
-//     }
-//   };
-
-//   const saveTheme = async (newTheme) => {
-//     try {
-//       await AsyncStorage.setItem("appTheme", newTheme);
-//       setTheme(newTheme);
-//     } catch (error) {
-//       console.error("Error saving theme:", error);
-//     }
-//   };
-
-//   const toggleTheme = () => {
-//     const newTheme = theme === "light" ? "dark" : "light";
-//     saveTheme(newTheme);
-//   };
-
-//   return (
-//     <ThemeContext.Provider
-//       style={{ pointerEvents: "none" }}
-//       value={{ theme, toggleTheme }}
-//     >
-//       {children}
-//     </ThemeContext.Provider>
-//   );
-// };
-// context/ThemeContext.js
 import React, { createContext, useState, useContext, useEffect } from "react";
 import { useColorScheme } from "react-native"; // To detect system theme preference
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -95,6 +48,8 @@ export const ThemeProvider = ({ children }) => {
       inputBackground: theme === "dark" ? "#2C2C2C" : "#F0F0F0", // Dark/Light input background
       inputBorder: theme === "dark" ? "#555555" : "#CCCCCC", // Dark/Light input border
       link: theme === "dark" ? "#BB86FC" : "#007bff", // Link color
+      error: theme === "dark" ? "#CF6679" : "#D32F2F", // Error color
+      success: theme === "dark" ? "#03DAC6" : "#388E3C", // Success color
       // Add more colors as needed for other UI elements
     },
   };
