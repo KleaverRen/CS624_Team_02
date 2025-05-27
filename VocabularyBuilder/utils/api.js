@@ -2,8 +2,18 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://localhost:3000/api"; // IMPORTANT: Replace with your backend URL in development and production!
-
+// Retrieve API_BASE_URL from the .env file
+const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api"; // Fallback to localhost if not defined
+// const API_BASE_URL = Config.API_BASE_URL || "http://10.0.0.31:3000/api"; // Fallback to localhost if not defined
+if (!API_BASE_URL) {
+  console.error(
+    "API_BASE_URL is not defined in your .env file or hasn't been loaded correctly."
+  );
+  // You might want to throw an error or set a fallback here
+} else {
+  console.log("Using API Base URL:", API_BASE_URL);
+}
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000, // 10 seconds timeout

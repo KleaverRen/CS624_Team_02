@@ -2,6 +2,7 @@ const Vocabulary = require("../models/vocabulary");
 const Quiz = require("../models/quiz");
 const QuizResult = require("../models/quizResult");
 const IncorrectAnswer = require("../models/incorrectAnswer");
+const mongoose = require("mongoose");
 
 const generateQuizTitle = () => {
   const prefixes = [
@@ -39,7 +40,6 @@ const generateQuizTitle = () => {
 const generateQuiz = async (userId, numberOfQuestions = 5) => {
   try {
     const userVocabulary = await Vocabulary.find({ userId });
-
     if (userVocabulary.length < numberOfQuestions) {
       return [];
     }
@@ -51,26 +51,52 @@ const generateQuiz = async (userId, numberOfQuestions = 5) => {
     selectedWords.push(...shuffledVocabulary.slice(0, numberOfQuestions));
 
     const quizQuestions = selectedWords.map((wordObj) => {
-      const correctAnswer = wordObj.definition;
+      const correctDefinition = wordObj.definition;
       const correctWord = wordObj.word;
 
-      const incorrectOptions = userVocabulary
-        .filter(
-          (otherWordObj) =>
-            otherWordObj._id.toString() !== wordObj._id.toString()
-        )
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 3)
-        .map((item) => item.definition);
+      // Create an array of potential options including the correct one
+      const allDefinitions = userVocabulary.map((item) => item.definition);
 
-      const options = [...incorrectOptions, correctAnswer].sort(
-        () => 0.5 - Math.random()
+      // Filter out the correct definition from the incorrect options pool
+      const incorrectOptionsPool = allDefinitions.filter(
+        (def) => def !== correctDefinition
       );
 
+      // Shuffle and slice incorrect options
+      const shuffledIncorrectOptions = [...incorrectOptionsPool]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3);
+
+      // Combine correct and incorrect definitions
+      const rawOptions = [...shuffledIncorrectOptions, correctDefinition];
+
+      // Map raw options to the new schema's option format { text: "...", _id: "..." }
+      // We generate _id's here because Mongoose will assign them when saving,
+      // but we need to know the correct one beforehand.
+      const optionsWithIds = rawOptions
+        .sort(() => 0.5 - Math.random())
+        .map((optionText) => ({
+          text: optionText,
+          _id: new mongoose.Types.ObjectId(), // Generate a new ObjectId for each option
+        }));
+
+      // Find the _id of the correct option
+      const correctOption = optionsWithIds.find(
+        (opt) => opt.text === correctDefinition
+      );
+      const correctOptionId = correctOption ? correctOption._id : null;
+
+      if (!correctOptionId) {
+        console.error("Error: Correct option not found in generated options.");
+        // Handle this error appropriately, perhaps by re-generating the question
+        // or returning an error for this specific question.
+        // For now, we'll return an invalid question which will likely cause issues downstream.
+      }
+
       return {
-        word: correctWord,
-        options: options,
-        correctAnswer: correctAnswer,
+        text: correctWord, // Renamed 'word' to 'text' as per new schema
+        options: optionsWithIds,
+        correctOptionId: correctOptionId,
       };
     });
 
@@ -99,13 +125,17 @@ exports.getQuiz = async (req, res) => {
 
     // Save the generated quiz
     const newQuiz = new Quiz({
-      userId: userId,
+      userId: userId, // Assuming userId is still relevant for Quiz model, though not in the provided schema
       title: quizTitle,
       questions: quizQuestions,
     });
     await newQuiz.save();
 
-    res.status(200).json({ quizId: newQuiz._id, title: quizTitle }); // Return the quizId and title
+    res.status(200).json({
+      quizId: newQuiz._id,
+      title: quizTitle,
+      questions: newQuiz.questions, // Return the saved questions which now have _ids
+    }); // Return the quizId and title
   } catch (error) {
     console.error("Error generating and saving quiz:", error);
     res.status(500).json({
@@ -145,24 +175,55 @@ exports.submitQuiz = async (req, res) => {
       return res.status(404).json({ message: "Quiz not found" });
     }
 
-    const quizQuestions = quiz.questions;
+    const quizQuestions = quiz.questions; // This should contain your questions with options
 
     let score = 0;
-    const incorrectAnswers = [];
+    const results = []; // Combined array for all question outcomes
+    const incorrectAnswersForDb = []; // Array specifically for storing incorrect answers in DB
 
     for (const question of quizQuestions) {
-      const userAnswer = answers.find(
-        (ans) => ans.word === question.word
-      )?.userAnswer;
-      if (userAnswer && userAnswer === question.correctAnswer) {
+      // Find the user's answer for this specific question
+      const userAnswerObj = answers.find(
+        (ans) => ans.questionId === question._id.toString() // Assuming question has an _id
+      );
+      const userSelectedOptionId = userAnswerObj?.selectedOptionId; // Assuming user sends selected option ID
+      // Find the user's selected option text from the question's options
+      const selectedOption = question.options.find(
+        (opt) => opt._id.toString() === userSelectedOptionId
+      );
+      // Find the correct option text from the question's options
+      const correctOption = question.options.find(
+        (opt) => opt._id.toString() === question.correctOptionId.toString() // Assuming correctOptionId is stored
+      );
+      const isCorrect =
+        userSelectedOptionId === question.correctOptionId.toString();
+      if (isCorrect) {
         score++;
-      } else if (userAnswer) {
-        // Save incorrect answer
-        incorrectAnswers.push({
+      }
+
+      results.push({
+        questionId: question._id.toString(), // Use question ID
+        question: {
+          text: question.text, // Assuming question.text holds the question prompt
+        },
+        selectedOption: {
+          text: selectedOption ? selectedOption.text : "Not Answered", // Get text or "Not Answered"
+        },
+        correctOption: {
+          text: correctOption ? correctOption.text : "N/A", // Get text or "N/A"
+        },
+        isCorrect: isCorrect,
+      });
+
+      // If incorrect and an answer was provided, prepare for DB storage
+      if (!isCorrect && userSelectedOptionId) {
+        incorrectAnswersForDb.push({
+          userId: userId,
           quizId: quizId,
-          word: question.word,
-          userAnswer: userAnswer,
-          correctAnswer: question.correctAnswer,
+          questionId: question._id.toString(),
+          userSelectedOptionId: userSelectedOptionId,
+          correctOptionId: question.correctOptionId,
+          // You might want to store more details here for debugging or specific analysis
         });
       }
     }
@@ -174,12 +235,13 @@ exports.submitQuiz = async (req, res) => {
       userId: userId,
       score: score,
       totalQuestions: totalQuestions,
+      results: results, // Store the combined results array
     });
     await newQuizResult.save();
 
-    // Save incorrect answers
-    if (incorrectAnswers.length > 0) {
-      await IncorrectAnswer.insertMany(incorrectAnswers);
+    // Save incorrect answers to the database
+    if (incorrectAnswersForDb.length > 0) {
+      await IncorrectAnswer.insertMany(incorrectAnswersForDb);
     }
 
     // Delete the quiz after submission
@@ -188,6 +250,7 @@ exports.submitQuiz = async (req, res) => {
     res.status(200).json({
       score,
       totalQuestions,
+      results, // Include the combined results array
       message: "Quiz submitted and result saved successfully",
     });
   } catch (error) {
@@ -214,12 +277,10 @@ exports.getIncorrectAnswers = async (req, res) => {
     res.status(200).json(incorrectAnswers);
   } catch (error) {
     console.error("Error getting incorrect answers:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to get incorrect answers",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to get incorrect answers",
+      error: error.message,
+    });
   }
 };
 
@@ -243,11 +304,9 @@ exports.getIncorrectAnswersByQuiz = async (req, res) => {
     res.status(200).json(incorrectAnswers);
   } catch (error) {
     console.error("Error getting incorrect answers for quiz:", error);
-    res
-      .status(500)
-      .json({
-        message: "Failed to get incorrect answers for this quiz",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Failed to get incorrect answers for this quiz",
+      error: error.message,
+    });
   }
 };
