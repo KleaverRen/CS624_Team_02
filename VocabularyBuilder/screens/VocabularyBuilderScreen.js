@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TextInput,
-  Button,
   ActivityIndicator,
   Alert,
   StyleSheet,
@@ -12,16 +11,16 @@ import {
   Modal,
   Dimensions,
   RefreshControl,
+  ScrollView, // For detail modal content if definition is long
 } from "react-native";
 import {
   getVocabulary,
   addVocabularyWord,
   deleteVocabularyWord,
   updateVocabularyWord,
-} from "../utils/api"; // Adjust path
+} from "../utils/api";
 import { useTheme } from "../contexts/ThemeContext";
 import Icon from "react-native-vector-icons/FontAwesome";
-import { useFocusEffect } from "@react-navigation/native";
 
 const { width, height } = Dimensions.get("window");
 
@@ -32,9 +31,12 @@ const VocabularyBuilderScreen = () => {
   const [newWord, setNewWord] = useState("");
   const [newDefinition, setNewDefinition] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); // For pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
 
-  // State for editing
+  // State for view mode: 'list' or 'grid'
+  const [viewMode, setViewMode] = useState("list"); // Default to list view
+
+  // State for editing and modals
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [detailWord, setDetailWord] = useState("");
   const [detailDefinition, setDetailDefinition] = useState("");
@@ -44,6 +46,7 @@ const VocabularyBuilderScreen = () => {
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isAddModalVisible, setAddModalVisible] = useState(false);
 
+  // Fetch vocabulary on initial load and when screen is focused
   useEffect(() => {
     fetchVocabulary();
   }, []);
@@ -61,15 +64,9 @@ const VocabularyBuilderScreen = () => {
       Alert.alert("Error", "Failed to load vocabulary list.");
     } finally {
       setIsLoading(false);
-      setRefreshing(false); // Stop refreshing animation
+      setRefreshing(false);
     }
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchVocabulary();
-    }, [fetchVocabulary])
-  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -77,7 +74,7 @@ const VocabularyBuilderScreen = () => {
   }, [fetchVocabulary]);
 
   const handleAddWord = async () => {
-    if (!newWord || !newDefinition) {
+    if (!newWord.trim() || !newDefinition.trim()) {
       Alert.alert("Error", "Please enter both word and definition.");
       return;
     }
@@ -87,12 +84,16 @@ const VocabularyBuilderScreen = () => {
       Alert.alert("Success", "Word added successfully!");
       setNewWord("");
       setNewDefinition("");
-      setAddModalVisible(false); // Close modal
-      fetchVocabulary(); // Refresh the list
+      setAddModalVisible(false);
+      fetchVocabulary();
     } catch (error) {
       console.error(
         "Error adding word:",
         error.response?.data || error.message
+      );
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to add word."
       );
     } finally {
       setIsLoading(false);
@@ -121,13 +122,16 @@ const VocabularyBuilderScreen = () => {
       Alert.alert("Success", "Word updated successfully!");
       setEditModalVisible(false);
       setEditingWord(null);
-      fetchVocabulary(); // Refresh list
+      fetchVocabulary();
     } catch (error) {
       console.error(
         "Error updating word:",
         error.response?.data || error.message
       );
-      Alert.alert("Error", "Failed to update word.");
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to update word."
+      );
     }
   };
 
@@ -139,19 +143,22 @@ const VocabularyBuilderScreen = () => {
 
   // Function to confirm and perform delete
   const handleConfirmDelete = async () => {
-    if (!wordToDelete) return; // Should not happen if button is enabled correctly
+    if (!wordToDelete) return;
     try {
       await deleteVocabularyWord(wordToDelete._id);
       Alert.alert("Success", "Word deleted successfully!");
-      setDeleteModalVisible(false); // Close modal
-      setWordToDelete(null); // Clear word
-      fetchVocabulary(); // Refresh list
+      setDeleteModalVisible(false);
+      setWordToDelete(null);
+      fetchVocabulary();
     } catch (error) {
       console.error(
         "Error deleting word:",
         error.response?.data || error.message
       );
-      Alert.alert("Error", "Failed to delete word.");
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to delete word."
+      );
     }
   };
 
@@ -161,17 +168,26 @@ const VocabularyBuilderScreen = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View style={[styles.wordItem, { backgroundColor: colors.cardBackground }]}>
-      <View style={styles.wordTextContainer}>
-        <Text style={[styles.word, { color: colors.text }]}>{item.word}</Text>
-      </View>
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          onPress={() => handleDetailWord(item)}
-          style={styles.actionButton}
+    <TouchableOpacity
+      onPress={() => handleDetailWord(item)}
+      style={[
+        styles.card,
+        viewMode === "grid" && styles.gridCard, // Apply grid specific styles
+        { backgroundColor: colors.cardBackground, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.cardContent}>
+        <Text style={[styles.cardWord, { color: colors.text }]}>
+          {item.word}
+        </Text>
+        <Text
+          style={[styles.cardDefinition, { color: colors.subText }]}
+          numberOfLines={viewMode === "list" ? 2 : 3}
         >
-          <Icon name="info" size={24} color="#007bff" />
-        </TouchableOpacity>
+          {item.definition}
+        </Text>
+      </View>
+      <View style={styles.cardActions}>
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => {
@@ -179,16 +195,16 @@ const VocabularyBuilderScreen = () => {
             setEditModalVisible(true);
           }}
         >
-          <Icon name="pencil" size={24} color="#007bff" />
+          <Icon name="pencil" size={width * 0.05} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleDeletePress(item)}
           style={styles.actionButton}
         >
-          <Icon name="trash" size={24} color="red" />
+          <Icon name="trash" size={width * 0.05} color={colors.error} />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (isLoading && !refreshing) {
@@ -206,16 +222,67 @@ const VocabularyBuilderScreen = () => {
   }
 
   return (
-    <View style={[styles.container, theme === "dark" && styles.darkContainer]}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Text style={[styles.header, { color: colors.text }]}>
         My Vocabulary List
       </Text>
 
+      <View style={styles.viewModeToggleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.viewModeButton,
+            viewMode === "list" && { backgroundColor: colors.primary },
+          ]}
+          onPress={() => setViewMode("list")}
+        >
+          <Icon
+            name="list"
+            size={20}
+            color={viewMode === "list" ? colors.buttonText : colors.text}
+          />
+          <Text
+            style={[
+              styles.viewModeButtonText,
+              { color: viewMode === "list" ? colors.buttonText : colors.text },
+            ]}
+          >
+            List
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.viewModeButton,
+            viewMode === "grid" && { backgroundColor: colors.primary },
+          ]}
+          onPress={() => setViewMode("grid")}
+        >
+          <Icon
+            name="th-large"
+            size={20}
+            color={viewMode === "grid" ? colors.buttonText : colors.text}
+          />
+          <Text
+            style={[
+              styles.viewModeButtonText,
+              { color: viewMode === "grid" ? colors.buttonText : colors.text },
+            ]}
+          >
+            Grid
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <FlatList
+        key={viewMode}
         data={vocabulary}
         renderItem={renderItem}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          viewMode === "grid" && styles.gridListContent,
+        ]}
+        numColumns={viewMode === "grid" ? 2 : 1} // Set number of columns for grid
+        columnWrapperStyle={viewMode === "grid" && styles.gridColumnWrapper} // Styles for row of items
         ListEmptyComponent={
           <Text style={[styles.emptyListText, { color: colors.subText }]}>
             No words in your vocabulary yet. Add some!
@@ -225,8 +292,8 @@ const VocabularyBuilderScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]} // For Android
-            tintColor={colors.primary} // For iOS
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       />
@@ -316,38 +383,6 @@ const VocabularyBuilderScreen = () => {
         onRequestClose={() => setIsDetailModalVisible(false)}
       >
         <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalTitle}>Detail Word</Text>
-            <Text
-              style={[styles.wordText, theme === "dark" && styles.darkWordText]}
-            >
-              {detailWord}
-            </Text>
-            <Text
-              style={[
-                styles.definitionText,
-                theme === "dark" && styles.darkDefinitionText,
-              ]}
-            >
-              {detailDefinition}
-            </Text>
-            <View style={styles.modalButton}>
-              <Button
-                title="Close"
-                onPress={() => setIsDetailModalVisible(false)}
-                color="gray"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isDetailModalVisible}
-        onRequestClose={() => setIsDetailModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
           <View
             style={[
               styles.modalView,
@@ -355,39 +390,40 @@ const VocabularyBuilderScreen = () => {
             ]}
           >
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Detail Word
+              Word Detail
             </Text>
             {detailWord && (
               <>
-                <Text
-                  style={[
-                    styles.wordText,
-                    theme === "dark" && styles.darkWordText,
-                  ]}
-                >
+                <Text style={[styles.wordTextDetail, { color: colors.text }]}>
                   {detailWord}
                 </Text>
-                <Text
-                  style={[
-                    styles.definitionText,
-                    theme === "dark" && styles.darkDefinitionText,
-                  ]}
-                >
-                  {detailDefinition}
-                </Text>
+                <ScrollView style={styles.definitionScrollContainer}>
+                  <Text
+                    style={[
+                      styles.definitionTextDetail,
+                      { color: colors.subText },
+                    ]}
+                  >
+                    {detailDefinition}
+                  </Text>
+                </ScrollView>
               </>
             )}
             <View style={styles.modalButtonContainer}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[
+                  styles.modalButton,
+                  { backgroundColor: colors.buttonSecondary },
+                ]}
                 onPress={() => setIsDetailModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Cancel</Text>
+                <Text style={styles.buttonText}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
       {/* Edit Word Modal */}
       <Modal
         animationType="slide"
@@ -466,7 +502,7 @@ const VocabularyBuilderScreen = () => {
         </View>
       </Modal>
 
-      {/* Delete Confirmation Modal (NEW) */}
+      {/* Delete Confirmation Modal */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -484,7 +520,9 @@ const VocabularyBuilderScreen = () => {
               Confirm Deletion
             </Text>
             <Text style={[styles.modalText, { color: colors.subText }]}>
-              Are you sure you want to delete the word "{wordToDelete?.word}"?
+              Are you sure you want to delete the word "
+              <Text style={{ fontWeight: "bold" }}>{wordToDelete?.word}</Text>"
+              ?
             </Text>
             <View style={styles.modalButtonContainer}>
               <TouchableOpacity
@@ -510,13 +548,7 @@ const VocabularyBuilderScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#f5f5f5",
-  },
-  darkContainer: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#333",
+    padding: width * 0.05, // Responsive padding
   },
   loadingContainer: {
     flex: 1,
@@ -524,138 +556,97 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
-    fontSize: 26,
+    fontSize: width * 0.07, // Responsive font size
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: height * 0.02, // Responsive margin
     textAlign: "center",
-    color: "#333",
   },
-  darkHeader: {
-    fontSize: 26,
+  viewModeToggleContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: height * 0.02,
+    borderRadius: 10,
+    overflow: "hidden", // Ensures border radius applies to children
+    borderColor: "#ccc",
+    borderWidth: 1,
+  },
+  viewModeButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: height * 0.015,
+    paddingHorizontal: width * 0.02,
+    backgroundColor: "transparent", // Default background
+  },
+  viewModeButtonText: {
+    marginLeft: width * 0.02,
+    fontSize: width * 0.04,
     fontWeight: "bold",
-    marginBottom: 20,
+  },
+  listContent: {
+    paddingBottom: height * 0.1, // Ensure space for the FAB
+  },
+  gridListContent: {
+    justifyContent: "space-between", // Distribute items evenly
+  },
+  gridColumnWrapper: {
+    justifyContent: "space-between",
+  },
+  emptyListText: {
     textAlign: "center",
-    color: "#eee",
+    fontStyle: "italic",
+    marginTop: height * 0.05,
+    fontSize: width * 0.045,
   },
-  subheader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-    color: "#555",
-  },
-  darkSubheader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginTop: 20,
-    marginBottom: 10,
-    color: "#eee",
-  },
-  addWordContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 20,
+  // --- Card Styles ---
+  card: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: width * 0.04,
+    marginBottom: height * 0.015,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  darkAddWordContainer: {
-    backgroundColor: "#444",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  gridCard: {
+    width: "48%", // Approximately half width minus margin
+    marginHorizontal: "1%", // Space between cards
+    marginBottom: width * 0.02,
+    aspectRatio: 1, // Make cards square in grid for better layout
+    justifyContent: "space-between", // Distribute content
   },
-  input: {
-    width: "100%",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    marginBottom: 10,
+  cardContent: {
+    flex: 1,
+    marginBottom: height * 0.01,
   },
-  darkInput: {
-    width: "100%",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#555",
-    borderRadius: 8,
-    marginBottom: 10,
-    backgroundColor: "#666",
-  },
-  wordItem: {
-    backgroundColor: "#fff",
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  darkWordItem: {
-    backgroundColor: "#444",
-    padding: 15,
-    marginVertical: 5,
-    borderRadius: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  wordText: {
-    fontSize: 18,
+  cardWord: {
+    fontSize: width * 0.05,
     fontWeight: "bold",
+    marginBottom: height * 0.005,
   },
-  darkWordText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#eee",
+  cardDefinition: {
+    fontSize: width * 0.035,
   },
-  definitionText: {
-    fontSize: 14,
-    color: "#555",
-  },
-  darkDefinitionText: {
-    fontSize: 14,
-    color: "#ddd",
-  },
-  noDataText: {
-    textAlign: "center",
-    fontStyle: "italic",
-    color: "#777",
-    marginTop: 10,
-  },
-  actionsContainer: {
+  cardActions: {
     flexDirection: "row",
+    justifyContent: "flex-end",
     alignItems: "center",
   },
   actionButton: {
-    marginLeft: 10,
-    padding: 5,
+    marginLeft: width * 0.03,
+    padding: width * 0.01,
   },
+  // --- Floating Action Button (Add Button) ---
   addButton: {
     position: "absolute",
-    bottom: height * 0.04, // Responsive bottom position
-    right: width * 0.05, // Responsive right position
-    width: width * 0.15, // Responsive width
-    height: width * 0.15, // Responsive height
-    borderRadius: width * 0.075, // Half of width/height for perfect circle
+    bottom: height * 0.04,
+    right: width * 0.05,
+    width: width * 0.16, // Slightly larger for better tap target
+    height: width * 0.16,
+    borderRadius: width * 0.08,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
@@ -685,7 +676,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     width: "85%",
-    maxWidth: 400,
+    maxWidth: 400, // Max width for larger screens
   },
   modalTitle: {
     fontSize: width * 0.06,
@@ -694,7 +685,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modalText: {
-    // For delete modal specific text
     fontSize: width * 0.045,
     marginBottom: height * 0.03,
     textAlign: "center",
@@ -728,11 +718,26 @@ const styles = StyleSheet.create({
     fontSize: width * 0.04,
   },
   cancelButton: {
-    backgroundColor: "#6c757d", // Grey color for cancel
+    backgroundColor: "#6c757d",
   },
   deleteConfirmButton: {
-    // Specific style for the delete button in modal
     backgroundColor: "red",
+  },
+  wordTextDetail: {
+    fontSize: width * 0.05,
+    fontWeight: "bold",
+    marginBottom: height * 0.01,
+    textAlign: "center",
+  },
+  definitionScrollContainer: {
+    maxHeight: height * 0.3, // Limit height of scrollable definition
+    width: "100%",
+    paddingHorizontal: width * 0.02,
+    marginBottom: height * 0.02,
+  },
+  definitionTextDetail: {
+    fontSize: width * 0.04,
+    textAlign: "center",
   },
 });
 
