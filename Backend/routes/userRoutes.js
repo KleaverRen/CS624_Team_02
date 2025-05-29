@@ -9,5 +9,7 @@ router.use(authMiddleware.authenticateToken);
 
 // GET /api/user/profile - Get authenticated user's profile
 router.get("/profile", userController.getUserProfile);
+// PUT /api/user/profile - Update authenticated user's profile
+router.patch("/profile", userController.updateUserProfile);
 
 module.exports = router;

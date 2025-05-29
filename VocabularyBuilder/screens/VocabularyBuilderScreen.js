@@ -3,24 +3,26 @@ import {
   View,
   Text,
   FlatList,
-  TextInput,
   ActivityIndicator,
   Alert,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   Dimensions,
   RefreshControl,
-  ScrollView, // For detail modal content if definition is long
 } from "react-native";
 import {
   getVocabulary,
-  addVocabularyWord,
-  deleteVocabularyWord,
-  updateVocabularyWord,
+  // remove addVocabularyWord, deleteVocabularyWord, updateVocabularyWord
+  // as they are now used directly within the modal components
 } from "../utils/api";
 import { useTheme } from "../contexts/ThemeContext";
 import Icon from "react-native-vector-icons/FontAwesome";
+
+// Import your new modal components
+import AddWordModal from "../components/AddWordModal";
+import DetailWordModal from "../components/DetailWordModal";
+import EditWordModal from "../components/EditWordModal";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -28,23 +30,22 @@ const VocabularyBuilderScreen = () => {
   const { theme, colors } = useTheme();
 
   const [vocabulary, setVocabulary] = useState([]);
-  const [newWord, setNewWord] = useState("");
-  const [newDefinition, setNewDefinition] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // State for view mode: 'list' or 'grid'
   const [viewMode, setViewMode] = useState("list"); // Default to list view
 
-  // State for editing and modals
+  // States for modal visibility
+  const [isAddModalVisible, setAddModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-  const [detailWord, setDetailWord] = useState("");
-  const [detailDefinition, setDetailDefinition] = useState("");
-  const [wordToDelete, setWordToDelete] = useState(null);
-  const [editingWord, setEditingWord] = useState(null);
   const [isEditModalVisible, setEditModalVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [isAddModalVisible, setAddModalVisible] = useState(false);
+
+  // States to pass data to modals
+  const [selectedWordForDetail, setSelectedWordForDetail] = useState(null);
+  const [selectedWordForEdit, setSelectedWordForEdit] = useState(null);
+  const [selectedWordForDelete, setSelectedWordForDelete] = useState(null);
 
   // Fetch vocabulary on initial load and when screen is focused
   useEffect(() => {
@@ -73,103 +74,54 @@ const VocabularyBuilderScreen = () => {
     fetchVocabulary();
   }, [fetchVocabulary]);
 
-  const handleAddWord = async () => {
-    if (!newWord.trim() || !newDefinition.trim()) {
-      Alert.alert("Error", "Please enter both word and definition.");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await addVocabularyWord(newWord, newDefinition);
-      Alert.alert("Success", "Word added successfully!");
-      setNewWord("");
-      setNewDefinition("");
-      setAddModalVisible(false);
-      fetchVocabulary();
-    } catch (error) {
-      console.error(
-        "Error adding word:",
-        error.response?.data || error.message
-      );
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to add word."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  // --- Handlers for opening/closing modals and passing data ---
+
+  const handleAddWordModalOpen = () => {
+    setAddModalVisible(true);
+  };
+  const handleAddModalClose = () => {
+    setAddModalVisible(false);
+  };
+  const handleAddSuccess = () => {
+    fetchVocabulary(); // Refresh list after successful add
   };
 
-  // --- Detail Functions ---
-  const handleDetailWord = (wordItem) => {
-    setDetailWord(wordItem.word);
-    setDetailDefinition(wordItem.definition);
+  const handleDetailWordModalOpen = (wordItem) => {
+    setSelectedWordForDetail(wordItem);
     setIsDetailModalVisible(true);
   };
-
-  // --- Edit Functions ---
-  const handleEditWord = async () => {
-    if (!editingWord.word.trim() || !editingWord.definition.trim()) {
-      Alert.alert("Error", "Word and Definition cannot be empty.");
-      return;
-    }
-    try {
-      await updateVocabularyWord(
-        editingWord._id,
-        editingWord.word,
-        editingWord.definition
-      );
-      Alert.alert("Success", "Word updated successfully!");
-      setEditModalVisible(false);
-      setEditingWord(null);
-      fetchVocabulary();
-    } catch (error) {
-      console.error(
-        "Error updating word:",
-        error.response?.data || error.message
-      );
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to update word."
-      );
-    }
+  const handleDetailModalClose = () => {
+    setIsDetailModalVisible(false);
+    setSelectedWordForDetail(null);
   };
 
-  // Function to show the delete confirmation modal
-  const handleDeletePress = (word) => {
-    setWordToDelete(word);
+  const handleEditModalOpen = (wordItem) => {
+    setSelectedWordForEdit(wordItem);
+    setEditModalVisible(true);
+  };
+  const handleEditModalClose = () => {
+    setEditModalVisible(false);
+    setSelectedWordForEdit(null);
+  };
+  const handleEditSuccess = () => {
+    fetchVocabulary(); // Refresh list after successful edit
+  };
+
+  const handleDeleteModalOpen = (wordItem) => {
+    setSelectedWordForDelete(wordItem);
     setDeleteModalVisible(true);
   };
-
-  // Function to confirm and perform delete
-  const handleConfirmDelete = async () => {
-    if (!wordToDelete) return;
-    try {
-      await deleteVocabularyWord(wordToDelete._id);
-      Alert.alert("Success", "Word deleted successfully!");
-      setDeleteModalVisible(false);
-      setWordToDelete(null);
-      fetchVocabulary();
-    } catch (error) {
-      console.error(
-        "Error deleting word:",
-        error.response?.data || error.message
-      );
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to delete word."
-      );
-    }
-  };
-
-  const handleCancelDelete = () => {
+  const handleDeleteModalClose = () => {
     setDeleteModalVisible(false);
-    setWordToDelete(null);
+    setSelectedWordForDelete(null);
+  };
+  const handleDeleteSuccess = () => {
+    fetchVocabulary(); // Refresh list after successful delete
   };
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
-      onPress={() => handleDetailWord(item)}
+      onPress={() => handleDetailWordModalOpen(item)}
       style={[
         styles.card,
         viewMode === "grid" && styles.gridCard, // Apply grid specific styles
@@ -190,15 +142,12 @@ const VocabularyBuilderScreen = () => {
       <View style={styles.cardActions}>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => {
-            setEditingWord(item);
-            setEditModalVisible(true);
-          }}
+          onPress={() => handleEditModalOpen(item)}
         >
           <Icon name="pencil" size={width * 0.05} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => handleDeletePress(item)}
+          onPress={() => handleDeleteModalOpen(item)}
           style={styles.actionButton}
         >
           <Icon name="trash" size={width * 0.05} color={colors.error} />
@@ -281,8 +230,8 @@ const VocabularyBuilderScreen = () => {
           styles.listContent,
           viewMode === "grid" && styles.gridListContent,
         ]}
-        numColumns={viewMode === "grid" ? 2 : 1} // Set number of columns for grid
-        columnWrapperStyle={viewMode === "grid" && styles.gridColumnWrapper} // Styles for row of items
+        numColumns={viewMode === "grid" ? 2 : 1}
+        columnWrapperStyle={viewMode === "grid" && styles.gridColumnWrapper}
         ListEmptyComponent={
           <Text style={[styles.emptyListText, { color: colors.subText }]}>
             No words in your vocabulary yet. Add some!
@@ -300,247 +249,46 @@ const VocabularyBuilderScreen = () => {
 
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: colors.primary }]}
-        onPress={() => setAddModalVisible(true)}
+        onPress={handleAddWordModalOpen}
       >
         <Icon name="plus" size={30} color="white" />
       </TouchableOpacity>
 
-      {/* Add Word Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isAddModalVisible}
-        onRequestClose={() => setAddModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View
-            style={[
-              styles.modalView,
-              { backgroundColor: colors.cardBackground },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Add New Word
-            </Text>
-            <TextInput
-              style={[
-                styles.modalInput,
-                {
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="Word"
-              placeholderTextColor={colors.subText}
-              value={newWord}
-              onChangeText={setNewWord}
-              keyboardAppearance={theme}
-            />
-            <TextInput
-              style={[
-                styles.modalInput,
-                {
-                  borderColor: colors.inputBorder,
-                  backgroundColor: colors.inputBackground,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="Definition"
-              placeholderTextColor={colors.subText}
-              value={newDefinition}
-              onChangeText={setNewDefinition}
-              multiline
-              numberOfLines={4}
-              keyboardAppearance={theme}
-            />
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setAddModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={handleAddWord}
-              >
-                <Text style={styles.buttonText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Render all separated modals */}
+      <AddWordModal
+        isVisible={isAddModalVisible}
+        onClose={handleAddModalClose}
+        onAddSuccess={handleAddSuccess}
+        theme={theme}
+        colors={colors}
+      />
 
-      {/* Detail Word Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isDetailModalVisible}
-        onRequestClose={() => setIsDetailModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View
-            style={[
-              styles.modalView,
-              { backgroundColor: colors.cardBackground },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Word Detail
-            </Text>
-            {detailWord && (
-              <>
-                <Text style={[styles.wordTextDetail, { color: colors.text }]}>
-                  {detailWord}
-                </Text>
-                <ScrollView style={styles.definitionScrollContainer}>
-                  <Text
-                    style={[
-                      styles.definitionTextDetail,
-                      { color: colors.subText },
-                    ]}
-                  >
-                    {detailDefinition}
-                  </Text>
-                </ScrollView>
-              </>
-            )}
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: colors.buttonSecondary },
-                ]}
-                onPress={() => setIsDetailModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <DetailWordModal
+        isVisible={isDetailModalVisible}
+        onClose={handleDetailModalClose}
+        word={selectedWordForDetail?.word}
+        definition={selectedWordForDetail?.definition}
+        theme={theme}
+        colors={colors}
+      />
 
-      {/* Edit Word Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isEditModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          <View
-            style={[
-              styles.modalView,
-              { backgroundColor: colors.cardBackground },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Edit Word
-            </Text>
-            {editingWord && (
-              <>
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      borderColor: colors.inputBorder,
-                      backgroundColor: colors.inputBackground,
-                      color: colors.text,
-                    },
-                  ]}
-                  placeholder="Word"
-                  placeholderTextColor={colors.subText}
-                  value={editingWord.word}
-                  onChangeText={(text) =>
-                    setEditingWord({ ...editingWord, word: text })
-                  }
-                  keyboardAppearance={theme}
-                />
-                <TextInput
-                  style={[
-                    styles.modalInput,
-                    {
-                      borderColor: colors.inputBorder,
-                      backgroundColor: colors.inputBackground,
-                      color: colors.text,
-                    },
-                  ]}
-                  placeholder="Definition"
-                  placeholderTextColor={colors.subText}
-                  value={editingWord.definition}
-                  onChangeText={(text) =>
-                    setEditingWord({ ...editingWord, definition: text })
-                  }
-                  multiline
-                  numberOfLines={4}
-                  keyboardAppearance={theme}
-                />
-              </>
-            )}
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setEditModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modalButton,
-                  { backgroundColor: colors.primary },
-                ]}
-                onPress={handleEditWord}
-              >
-                <Text style={styles.buttonText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <EditWordModal
+        isVisible={isEditModalVisible}
+        onClose={handleEditModalClose}
+        editingWord={selectedWordForEdit} // Pass the entire word object
+        onUpdateSuccess={handleEditSuccess}
+        theme={theme}
+        colors={colors}
+      />
 
-      {/* Delete Confirmation Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isDeleteModalVisible}
-        onRequestClose={handleCancelDelete}
-      >
-        <View style={styles.centeredView}>
-          <View
-            style={[
-              styles.modalView,
-              { backgroundColor: colors.cardBackground },
-            ]}
-          >
-            <Text style={[styles.modalTitle, { color: colors.text }]}>
-              Confirm Deletion
-            </Text>
-            <Text style={[styles.modalText, { color: colors.subText }]}>
-              Are you sure you want to delete the word "
-              <Text style={{ fontWeight: "bold" }}>{wordToDelete?.word}</Text>"
-              ?
-            </Text>
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={handleCancelDelete}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.deleteConfirmButton]}
-                onPress={handleConfirmDelete}
-              >
-                <Text style={styles.buttonText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <DeleteConfirmationModal
+        isVisible={isDeleteModalVisible}
+        onClose={handleDeleteModalClose}
+        wordToDelete={selectedWordForDelete} // Pass the entire word object
+        onDeleteSuccess={handleDeleteSuccess}
+        theme={theme}
+        colors={colors}
+      />
     </View>
   );
 };
@@ -548,7 +296,7 @@ const VocabularyBuilderScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: width * 0.05, // Responsive padding
+    padding: width * 0.05,
   },
   loadingContainer: {
     flex: 1,
@@ -556,9 +304,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
-    fontSize: width * 0.07, // Responsive font size
+    fontSize: width * 0.07,
     fontWeight: "bold",
-    marginBottom: height * 0.02, // Responsive margin
+    marginBottom: height * 0.02,
     textAlign: "center",
   },
   viewModeToggleContainer: {
@@ -566,7 +314,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: height * 0.02,
     borderRadius: 10,
-    overflow: "hidden", // Ensures border radius applies to children
+    overflow: "hidden",
     borderColor: "#ccc",
     borderWidth: 1,
   },
@@ -577,7 +325,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: height * 0.015,
     paddingHorizontal: width * 0.02,
-    backgroundColor: "transparent", // Default background
+    backgroundColor: "transparent",
   },
   viewModeButtonText: {
     marginLeft: width * 0.02,
@@ -585,10 +333,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   listContent: {
-    paddingBottom: height * 0.1, // Ensure space for the FAB
+    paddingBottom: height * 0.1,
   },
   gridListContent: {
-    justifyContent: "space-between", // Distribute items evenly
+    justifyContent: "space-between",
   },
   gridColumnWrapper: {
     justifyContent: "space-between",
@@ -599,7 +347,6 @@ const styles = StyleSheet.create({
     marginTop: height * 0.05,
     fontSize: width * 0.045,
   },
-  // --- Card Styles ---
   card: {
     borderWidth: 1,
     borderRadius: 10,
@@ -612,11 +359,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   gridCard: {
-    width: "48%", // Approximately half width minus margin
-    marginHorizontal: "1%", // Space between cards
+    width: "48%",
+    marginHorizontal: "1%",
     marginBottom: width * 0.02,
-    aspectRatio: 1, // Make cards square in grid for better layout
-    justifyContent: "space-between", // Distribute content
+    aspectRatio: 1,
+    justifyContent: "space-between",
   },
   cardContent: {
     flex: 1,
@@ -639,12 +386,11 @@ const styles = StyleSheet.create({
     marginLeft: width * 0.03,
     padding: width * 0.01,
   },
-  // --- Floating Action Button (Add Button) ---
   addButton: {
     position: "absolute",
     bottom: height * 0.04,
     right: width * 0.05,
-    width: width * 0.16, // Slightly larger for better tap target
+    width: width * 0.16,
     height: width * 0.16,
     borderRadius: width * 0.08,
     justifyContent: "center",
@@ -655,90 +401,8 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 8,
   },
-  // --- Modal Styles (common to all modals) ---
-  centeredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  modalView: {
-    margin: 20,
-    borderRadius: 10,
-    padding: 25,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "85%",
-    maxWidth: 400, // Max width for larger screens
-  },
-  modalTitle: {
-    fontSize: width * 0.06,
-    fontWeight: "bold",
-    marginBottom: height * 0.02,
-    textAlign: "center",
-  },
-  modalText: {
-    fontSize: width * 0.045,
-    marginBottom: height * 0.03,
-    textAlign: "center",
-  },
-  modalInput: {
-    width: "100%",
-    padding: width * 0.035,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: height * 0.015,
-    fontSize: width * 0.04,
-  },
-  modalButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    marginTop: height * 0.01,
-  },
-  modalButton: {
-    borderRadius: 8,
-    paddingVertical: height * 0.015,
-    paddingHorizontal: width * 0.06,
-    elevation: 2,
-    flex: 1,
-    marginHorizontal: width * 0.015,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: width * 0.04,
-  },
-  cancelButton: {
-    backgroundColor: "#6c757d",
-  },
-  deleteConfirmButton: {
-    backgroundColor: "red",
-  },
-  wordTextDetail: {
-    fontSize: width * 0.05,
-    fontWeight: "bold",
-    marginBottom: height * 0.01,
-    textAlign: "center",
-  },
-  definitionScrollContainer: {
-    maxHeight: height * 0.3, // Limit height of scrollable definition
-    width: "100%",
-    paddingHorizontal: width * 0.02,
-    marginBottom: height * 0.02,
-  },
-  definitionTextDetail: {
-    fontSize: width * 0.04,
-    textAlign: "center",
-  },
+  // Removed all modal-specific styles from here as they are now in their own files
+  // You might need to move common modal styles if you extract them into a separate styles file.
 });
 
 export default VocabularyBuilderScreen;

@@ -6,57 +6,78 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Button,
-  Modal,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import { getUserProfile } from "../utils/api";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+
+import LogoutConfirmationModal from "../components/LogoutConfirmationModal";
+import UpdateProfileModal from "../components/UpdateProfileModal";
 
 const SettingsScreen = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, colors, toggleTheme } = useTheme();
   const { logout } = useAuth();
-  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false); // State for modal visibility
-  const [userProfile, setUserProfile] = useState(null); // <-- State to hold user profile
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true); // <-- Loading state for profile
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [isUpdateProfileModalVisible, setUpdateProfileModalVisible] =
+    useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   const [dailyWordGoal, setDailyWordGoal] = useState("");
   const [isEditingGoal, setIsEditingGoal] = useState(false);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await getUserProfile();
-        setUserProfile(response.data);
-      } catch (error) {
-        console.error(
-          "Error fetching user profile:",
-          error.response?.data || error.message
-        );
-        Alert.alert("Error", "Failed to fetch user profile.");
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    };
-
     fetchProfile();
     loadSettings();
   }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await getUserProfile();
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error(
+        "Error fetching user profile:",
+        error.response?.data || error.message
+      );
+      Alert.alert("Error", "Failed to fetch user profile.");
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
 
   const handleShowLogoutModal = () => {
     setLogoutModalVisible(true);
   };
 
+  // This handler will be passed to the LogoutConfirmationModal
   const handleConfirmLogout = () => {
     setLogoutModalVisible(false); // Close modal first
-    logout(); // Call the logout function
+    logout(); // Call the logout function from AuthContext
   };
 
-  const handleCancelLogout = () => {
-    setLogoutModalVisible(false); // Just close the modal
+  const handleCloseLogoutModal = () => {
+    // Renamed from handleCancelLogout for clarity as it's just closing
+    setLogoutModalVisible(false);
   };
+
+  const handleShowUpdateProfileModal = () => {
+    setUpdateProfileModalVisible(true);
+  };
+
+  const handleUpdateProfileSuccess = (updatedUser) => {
+    setUserProfile(updatedUser);
+    setUpdateProfileModalVisible(false);
+  };
+
+  const handleCloseUpdateProfileModal = () => {
+    setUpdateProfileModalVisible(false);
+  };
+
   const loadSettings = async () => {
     try {
       const storedGoal = await AsyncStorage.getItem("dailyWordGoal");
@@ -69,12 +90,21 @@ const SettingsScreen = () => {
   };
 
   const saveDailyWordGoal = async (goal) => {
+    if (!goal || parseInt(goal) <= 0) {
+      Alert.alert(
+        "Invalid Goal",
+        "Please enter a valid number greater than 0 for your daily word goal."
+      );
+      return;
+    }
     try {
       await AsyncStorage.setItem("dailyWordGoal", goal);
       setDailyWordGoal(goal);
       setIsEditingGoal(false);
+      Alert.alert("Success", "Daily word goal updated!");
     } catch (error) {
       console.error("Error saving daily word goal:", error);
+      Alert.alert("Error", "Failed to save daily word goal.");
     }
   };
 
@@ -112,12 +142,16 @@ const SettingsScreen = () => {
           Username: {userProfile?.username || "N/A"}
         </Text>
         <Text style={[styles.item, theme === "dark" && styles.darkItem]}>
+          Email: {userProfile?.email || "N/A"}
+        </Text>
+        <Text style={[styles.item, theme === "dark" && styles.darkItem]}>
           Name: {userProfile?.firstName || ""} {userProfile?.lastName || ""}
         </Text>
-        <TouchableOpacity style={styles.actionButton}>
-          <Text style={styles.actionButtonText}>
-            Edit Profile (Comming Soon)
-          </Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleShowUpdateProfileModal}
+        >
+          <Text style={styles.actionButtonText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
@@ -130,14 +164,18 @@ const SettingsScreen = () => {
         >
           App Preferences
         </Text>
-        <Text style={[styles.item, theme === "dark" && styles.darkItem]}>
-          Theme: {theme === "light" ? "Light" : "Dark"}
-        </Text>
-        <TouchableOpacity style={styles.actionButton} onPress={toggleTheme}>
-          <Text style={styles.actionButtonText}>
-            Switch to {theme === "light" ? "Dark" : "Light"} Theme
+        <View style={styles.themeRow}>
+          <Text style={[styles.item, theme === "dark" && styles.darkItem]}>
+            Theme: {theme === "light" ? "Light" : "Dark"}
           </Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={toggleTheme} style={styles.themeToggle}>
+            <Icon
+              name={theme === "light" ? "weather-sunny" : "moon-waning-gibbous"}
+              size={30}
+              color={theme === "light" ? "#FFD700" : colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={[styles.section, theme === "dark" && styles.darkSection]}>
@@ -165,8 +203,12 @@ const SettingsScreen = () => {
         {isEditingGoal && (
           <View style={styles.editGoalInputContainer}>
             <TextInput
-              style={styles.editGoalInput}
+              style={[
+                styles.editGoalInput,
+                theme === "dark" && styles.darkEditGoalInput,
+              ]}
               placeholder="Enter your daily goal"
+              placeholderTextColor={theme === "dark" ? "#aaa" : "#666"}
               keyboardType="number-pad"
               value={dailyWordGoal}
               onChangeText={setDailyWordGoal}
@@ -195,47 +237,27 @@ const SettingsScreen = () => {
       <View style={styles.logoutButtonContainer}>
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => handleShowLogoutModal(true)}
+          onPress={handleShowLogoutModal} // This now just sets the state to show the modal
         >
           <Text style={styles.actionButtonText}>LOGOUT</Text>
         </TouchableOpacity>
       </View>
-      {/* Logout Confirmation Modal */}
-      <Modal
-        animationType="fade" // Or 'slide'
-        transparent={true}
-        visible={isLogoutModalVisible}
-        onRequestClose={handleCancelLogout} // Allows closing with hardware back button on Android
-      >
-        <View style={styles.centeredView}>
-          <View
-            style={[styles.modalView, theme === "dark" && styles.darkModalView]}
-          >
-            <Text
-              style={[
-                styles.modalText,
-                theme === "dark" && styles.darkModalText,
-              ]}
-            >
-              Are you sure you want to log out?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.buttonCancel]}
-                onPress={handleCancelLogout}
-              >
-                <Text style={styles.textStyle}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.buttonLogout]}
-                onPress={handleConfirmLogout}
-              >
-                <Text style={styles.textStyle}>Logout</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
+      {/* Logout Confirmation Modal - Now a separate component */}
+      <LogoutConfirmationModal
+        isVisible={isLogoutModalVisible}
+        onClose={handleCloseLogoutModal} // Pass a function to close the modal
+        onConfirmLogout={handleConfirmLogout} // Pass the function to perform logout
+      />
+
+      {/* Update Profile Modal */}
+      <UpdateProfileModal
+        isVisible={isUpdateProfileModalVisible}
+        onClose={handleCloseUpdateProfileModal}
+        userProfile={userProfile}
+        onUpdateSuccess={handleUpdateProfileSuccess}
+        theme={theme}
+      />
     </ScrollView>
   );
 };
@@ -245,17 +267,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 20,
     backgroundColor: "#f4f4f4",
   },
   darkContainer: {
     backgroundColor: "#333",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f4f4f4",
+  },
   logoutButtonContainer: {
-    marginTop: "auto", // Push the logout button to the bottom
-    width: "100%", // Make the button take up most of the width
-    marginBottom: 20,
+    marginTop: 20,
+    width: "100%",
   },
   logoutButton: {
     backgroundColor: "red",
@@ -348,6 +375,12 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingHorizontal: 10,
     backgroundColor: "white",
+    color: "#333",
+  },
+  darkEditGoalInput: {
+    backgroundColor: "#555",
+    borderColor: "#777",
+    color: "#eee",
   },
   saveGoalButton: {
     backgroundColor: "#007bff", // Blue
@@ -372,82 +405,11 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  // --- Modal Styles ---
-  centeredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.6)", // Semi-transparent overlay
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 35,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "80%", // Responsive width
-    maxWidth: 350, // Max width for larger screens
-  },
-  darkModalView: {
-    margin: 20,
-    backgroundColor: "#444",
-    borderRadius: 10,
-    padding: 35,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "80%", // Responsive width
-    maxWidth: 350,
-  },
-  modalText: {
-    marginBottom: 25,
-    textAlign: "center",
-    fontSize: 18,
-    color: "#333",
-  },
-  darkModalText: {
-    marginBottom: 25,
-    textAlign: "center",
-    fontSize: 18,
-    color: "#eee",
-  },
-  modalButtons: {
+  themeRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  modalButton: {
-    borderRadius: 8,
-    padding: 12,
-    elevation: 2,
-    flex: 1, // Make buttons share space
-    marginHorizontal: 5,
-  },
-  buttonCancel: {
-    backgroundColor: "#ccc",
-  },
-  buttonLogout: {
-    backgroundColor: "red",
-  },
-  textStyle: {
-    color: "white",
-    fontWeight: "bold",
-    textAlign: "center",
-    fontSize: 16,
+    justifyContent: "space-between", // Distributes items to ends of the row
+    alignItems: "center", // Aligns items vertically in the center
+    marginBottom: 8, // Add some bottom margin for spacing if needed
   },
 });
 

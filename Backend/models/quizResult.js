@@ -1,40 +1,10 @@
-// // models/quizResult.js
-// const mongoose = require("mongoose");
-
-// const QuizResultSchema = new mongoose.Schema({
-//   userId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "User",
-//     required: true,
-//     index: true,
-//   },
-//   score: {
-//     type: Number,
-//     required: true,
-//   },
-//   totalQuestions: {
-//     type: Number,
-//     required: true,
-//   },
-//   date: {
-//     type: Date,
-//     default: Date.now,
-//   },
-//   // You can add more details about the quiz if needed,
-//   // like the type of quiz, the words involved, etc.
-// });
-
-// const QuizResult = mongoose.model("QuizResult", QuizResultSchema);
-
-// module.exports = QuizResult;
-// models/QuizResult.js
 const mongoose = require("mongoose");
 
 const quizResultSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to your User model
+      ref: "User",
       required: true,
     },
     score: {
@@ -76,6 +46,7 @@ const quizResultSchema = new mongoose.Schema(
           type: Boolean,
           required: true,
         },
+        _id: false, // Prevents Mongoose from adding a default _id to subdocuments in this array
       },
     ],
   },

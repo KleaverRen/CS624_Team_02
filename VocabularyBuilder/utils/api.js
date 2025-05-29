@@ -62,17 +62,21 @@ export const authSignup = (username, email, password, firstName, lastName) =>
     firstName,
     lastName,
   });
-export const authLogout = () => api.post("/auth/logout"); // New logout API call
+export const authLogout = () => api.post("/auth/logout");
 // --- User Profile Endpoints ---
-export const getUserProfile = () => api.get("/user/profile"); // <-- New API call
-
+export const getUserProfile = () => api.get("/user/profile");
+export const updateUserProfile = (profileData) => {
+  // profileData should be an object like { email: 'new@example.com', firstName: 'New', lastName: 'Name' }
+  // You send the entire object as the body of the PATCH request.
+  return api.patch("/user/profile", profileData);
+};
 // --- Vocabulary Endpoints ---
 export const getVocabulary = () => api.get("/words");
 export const addVocabularyWord = (word, definition) =>
   api.post("/words", { word, definition });
 export const deleteVocabularyWord = (wordId) => api.delete(`/words/${wordId}`);
 export const updateVocabularyWord = (wordId, word, definition) =>
-  api.put(`/words/${wordId}`, { word, definition }); // New API function
+  api.put(`/words/${wordId}`, { word, definition });
 
 // --- Quiz Endpoints ---
 export const getQuiz = (count) =>
@@ -85,6 +89,8 @@ export const getQuizById = (quizId) => api.get(`/quiz/${quizId}`);
 export const recordQuizResult = (score, totalQuestions) =>
   api.post("/progress/quiz-results", { score, totalQuestions });
 export const getQuizResults = () => api.get("/progress/quiz-results");
+export const getQuizResultById = (id) =>
+  api.get(`/progress/quiz-results/${id}`);
 export const getOverallProgress = () => api.get("/progress");
 export const getIncorrectAnswers = () => api.get("/incorrect-answers");
 export const getIncorrectAnswersByQuiz = (quizId) =>

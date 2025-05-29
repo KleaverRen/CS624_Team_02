@@ -8,6 +8,7 @@ router.use(authMiddleware.authenticateToken);
 
 router.post("/quiz-results", progressController.recordQuizResult);
 router.get("/quiz-results", progressController.getQuizResults);
-router.get("/progress", progressController.getOverallProgress);
+router.get("/quiz-results/:id", progressController.getQuizResultById);
+router.get("/", progressController.getOverallProgress);
 
 module.exports = router;

@@ -1,332 +1,325 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LineChart } from "react-native-chart-kit";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Dimensions,
+} from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import { getQuizResults, getOverallProgress } from "../utils/api";
 import { useTheme } from "../contexts/ThemeContext";
+import QuizResultDetailModal from "../components/QuizResultDetailModal"; // Import the new modal component
+
+const { width, height } = Dimensions.get("window");
 
 const ProgressTrackerScreen = () => {
-  const { theme } = useTheme();
-  const [dailyWordGoal, setDailyWordGoal] = useState(null);
-  const [wordsAddedTodayCount, setWordsAddedTodayCount] = useState(0);
-  const [wordsLearnedCount, setWordsLearnedCount] = useState(0);
-  const [quizScores, setQuizScores] = useState([]);
-  const [chartData, setChartData] = useState({
-    labels: [],
-    datasets: [{ data: [] }],
-  });
+  const [overallProgress, setOverallProgress] = useState(null);
+  const [quizHistory, setQuizHistory] = useState([]);
+  const [isLoadingOverall, setIsLoadingOverall] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false); // State for modal visibility
+  const [selectedQuizResult, setSelectedQuizResult] = useState(null); // State for selected quiz result
 
-  useEffect(() => {
-    loadDailyWordGoal();
-    countWordsAddedToday();
-    loadProgressData();
+  const { colors, theme } = useTheme();
+
+  const fetchOverallProgress = useCallback(async () => {
+    setIsLoadingOverall(true);
+    setErrorMessage("");
+    try {
+      const response = await getOverallProgress();
+      setOverallProgress(response.data);
+    } catch (error) {
+      console.error(
+        "Error fetching overall progress:",
+        error.response?.data || error.message
+      );
+      setErrorMessage("Failed to load overall progress.");
+      Alert.alert(
+        "Error",
+        "Failed to load overall progress. Please try again later."
+      );
+    } finally {
+      setIsLoadingOverall(false);
+    }
   }, []);
 
-  const loadProgressData = async () => {
+  const fetchQuizHistory = useCallback(async () => {
+    setIsLoadingHistory(true);
+    setErrorMessage("");
     try {
-      const storedVocabulary = await AsyncStorage.getItem("vocabularyList");
-      if (storedVocabulary) {
-        setWordsLearnedCount(JSON.parse(storedVocabulary).length);
-      }
-
-      const storedScores = await AsyncStorage.getItem("quizScores");
-      if (storedScores) {
-        const parsedScores = JSON.parse(storedScores);
-        setQuizScores(parsedScores);
-
-        // Prepare data for the chart
-        const lastFiveScores = parsedScores.slice(-5).reverse(); // Get last 5, reversed for chronological order
-        const labels = lastFiveScores.map((score) =>
-          new Date(score.date).toLocaleDateString()
-        );
-        const dataPoints = lastFiveScores.map(
-          (score) => (score.score / score.totalQuestions) * 100
-        ); // Percentage score
-
-        setChartData({
-          labels: labels,
-          datasets: [
-            {
-              data: dataPoints,
-              color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // Example color
-              strokeWidth: 2,
-            },
-          ],
-        });
-      } else {
-        setChartData({ labels: [], datasets: [{ data: [] }] }); // Initialize with empty data
-      }
+      const response = await getQuizResults();
+      setQuizHistory(response.data);
     } catch (error) {
-      console.error("Error loading progress data:", error);
+      console.error(
+        "Error fetching quiz history:",
+        error.response?.data || error.message
+      );
+      setErrorMessage("Failed to load quiz history.");
+      Alert.alert(
+        "Error",
+        "Failed to load quiz history. Please try again later."
+      );
+    } finally {
+      setIsLoadingHistory(false);
     }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchOverallProgress();
+      fetchQuizHistory();
+      return () => {};
+    }, [fetchOverallProgress, fetchQuizHistory])
+  );
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const options = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  const loadDailyWordGoal = async () => {
-    try {
-      const goal = await AsyncStorage.getItem("dailyWordGoal");
-      if (goal) {
-        setDailyWordGoal(parseInt(goal));
-      }
-    } catch (error) {
-      console.error("Error loading daily word goal:", error);
-    }
+  // Function to open the modal with the selected quiz result
+  const openQuizResultDetail = (quizResult) => {
+    setSelectedQuizResult(quizResult);
+    setIsModalVisible(true);
   };
 
-  const countWordsAddedToday = async () => {
-    try {
-      const storedVocabulary = await AsyncStorage.getItem("vocabulary");
-      const vocabulary = storedVocabulary ? JSON.parse(storedVocabulary) : [];
-      const today = new Date().toISOString().slice(0, 10); // Get YYYY-MM-DD
-
-      let count = 0;
-      for (const wordObj of vocabulary) {
-        if (wordObj.addedDate && wordObj.addedDate.startsWith(today)) {
-          count++;
-        }
-      }
-      setWordsAddedTodayCount(count);
-    } catch (error) {
-      console.error("Error counting words added today:", error);
-    }
+  // Function to close the modal
+  const closeQuizResultDetail = () => {
+    setIsModalVisible(false);
+    setSelectedQuizResult(null); // Clear selected result when closing
   };
+
+  if (isLoadingOverall || isLoadingHistory) {
+    return (
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          Loading progress...
+        </Text>
+      </View>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <View
+        style={[styles.errorContainer, { backgroundColor: colors.background }]}
+      >
+        <Text style={[styles.errorText, { color: colors.error }]}>
+          {errorMessage}
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            fetchOverallProgress();
+            fetchQuizHistory();
+          }}
+          style={[styles.retryButton, { backgroundColor: colors.primary }]}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <View style={[styles.container, theme === "dark" && styles.darkContainer]}>
-      <Text style={[styles.title, theme === "dark" && styles.darkTitle]}>
-        Progress Tracker
-      </Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <Text style={[styles.title, { color: colors.text }]}>Your Progress</Text>
 
-      {/* Daily Word Goal Card */}
-      <View style={[styles.card, theme === "dark" && styles.darkCard]}>
-        <Text
-          style={[styles.cardTitle, theme === "dark" && styles.darkCardTitle]}
-        >
-          Daily Word Goal
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.inputBorder,
+          },
+        ]}
+      >
+        <Text style={[styles.cardTitle, { color: colors.primary }]}>
+          Overall Statistics
         </Text>
-        {dailyWordGoal !== null ? (
-          <Text
-            style={[styles.cardText, theme === "dark" && styles.darkCardText]}
-          >
-            Goal: {dailyWordGoal} words
-          </Text>
+        {overallProgress ? (
+          <>
+            <Text style={[styles.statText, { color: colors.text }]}>
+              Quizzes Taken:{" "}
+              <Text style={{ fontWeight: "bold" }}>
+                {overallProgress.totalQuizzesTaken}
+              </Text>
+            </Text>
+            <Text style={[styles.statText, { color: colors.text }]}>
+              Average Score:{" "}
+              <Text style={{ fontWeight: "bold" }}>
+                {overallProgress.averageScore
+                  ? overallProgress.averageScore.toFixed(2)
+                  : "0.00"}
+              </Text>
+            </Text>
+          </>
         ) : (
-          <Text
-            style={[
-              styles.cardText,
-              styles.italic,
-              theme === "dark" && styles.darkCardText,
-            ]}
-          >
-            Daily goal not set.
+          <Text style={[styles.statText, { color: colors.subText }]}>
+            No overall data available.
           </Text>
-        )}
-        {dailyWordGoal !== null && (
-          <Text
-            style={[styles.cardText, theme === "dark" && styles.darkCardText]}
-          >
-            Words added today: {wordsAddedTodayCount} / {dailyWordGoal}
-          </Text>
-        )}
-        {dailyWordGoal !== null && (
-          <View
-            style={[
-              styles.progressBarBackground,
-              theme === "dark" && styles.darkProgressBarBackground,
-            ]}
-          >
-            <View
-              style={[
-                styles.progressBar,
-                { width: `${(wordsAddedTodayCount / dailyWordGoal) * 100}%` },
-              ]}
-            />
-          </View>
         )}
       </View>
 
       <View
-        // style={theme === "dark" ? styles.darkProgressItem : styles.progressItem}
         style={[
-          styles.progressItem,
-          theme === "dark" && styles.darkProgressItem,
+          styles.card,
+          {
+            backgroundColor: colors.cardBackground,
+            borderColor: colors.inputBorder,
+          },
         ]}
       >
-        <Text
-          style={[styles.cardTitle, theme === "dark" && styles.darkCardTitle]}
-        >
-          Recent Quiz Scores:
+        <Text style={[styles.cardTitle, { color: colors.primary }]}>
+          Quiz History
         </Text>
-        {chartData.datasets[0].data.length > 0 ? (
-          <LineChart
-            data={chartData}
-            width={Dimensions.get("window").width - 70} // Adjust width based on screen width and padding
-            height={220}
-            yAxisSuffix="%"
-            yAxisInterval={1} // optional
-            chartConfig={{
-              backgroundColor: "#e26a00",
-              backgroundGradientFrom: "#fb8c00",
-              backgroundGradientTo: "#ffa726",
-              decimalPlaces: 0, // optional, defaults to 2dp
-              color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-              style: {
-                borderRadius: 16,
-              },
-              propsForDots: {
-                r: "6",
-                strokeWidth: "2",
-                stroke: "#ffa726",
-              },
-            }}
-            bezier
-            style={{
-              marginVertical: 8,
-              borderRadius: 16,
-            }}
-          />
+        {quizHistory.length > 0 ? (
+          quizHistory.map((quizResult, index) => (
+            <TouchableOpacity
+              key={quizResult._id || index}
+              style={[styles.historyItem, { borderBottomColor: colors.border }]}
+              onPress={() => openQuizResultDetail(quizResult)} // Add onPress handler here
+            >
+              <View style={styles.historyItemContent}>
+                <Text
+                  style={[
+                    styles.historyItemText,
+                    { color: colors.text, fontWeight: "bold" },
+                  ]}
+                >
+                  Quiz on {formatDate(quizResult.createdAt)}
+                </Text>
+                <Text
+                  style={[styles.historyItemText, { color: colors.subText }]}
+                >
+                  Score: {quizResult.score} / {quizResult.totalQuestions}
+                </Text>
+                {quizResult.results && (
+                  <Text
+                    style={[
+                      styles.historyItemText,
+                      { color: colors.subText, fontSize: width * 0.035 },
+                    ]}
+                  >
+                    Correct:{" "}
+                    {quizResult.results.filter((r) => r.isCorrect).length} |
+                    Incorrect:{" "}
+                    {quizResult.results.filter((r) => !r.isCorrect).length}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))
         ) : (
-          <Text
-            style={[
-              styles.cardText,
-              styles.italic,
-              theme === "dark" && styles.darkCardText,
-            ]}
-          >
-            No quiz scores yet to display a chart.
+          <Text style={[styles.statText, { color: colors.subText }]}>
+            No quiz history available yet.
           </Text>
         )}
-        {quizScores.length > 0 && (
-          <View>
-            <Text style={[styles.label, theme === "dark" && styles.darkLabel]}>
-              Detailed Scores:
-            </Text>
-            {quizScores.slice(-5).map((scoreData, index) => (
-              <Text
-                key={index}
-                style={[styles.score, theme === "dark" && styles.darkScore]}
-              >
-                {new Date(scoreData.date).toLocaleDateString()} -{" "}
-                {scoreData.score} / {scoreData.totalQuestions}
-              </Text>
-            ))}
-          </View>
-        )}
       </View>
-    </View>
+
+      {/* Quiz Detail Modal */}
+      <QuizResultDetailModal
+        isVisible={isModalVisible}
+        onClose={closeQuizResultDetail}
+        quizResult={selectedQuizResult}
+      />
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#f4f4f4",
+    padding: width * 0.05,
   },
-  darkContainer: {
-    backgroundColor: "#333",
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: height * 0.02,
+    fontSize: width * 0.045,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: width * 0.05,
+  },
+  errorText: {
+    fontSize: width * 0.05,
+    textAlign: "center",
+    marginBottom: height * 0.03,
+  },
+  retryButton: {
+    paddingVertical: height * 0.015,
+    paddingHorizontal: width * 0.05,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: width * 0.045,
+    fontWeight: "bold",
   },
   title: {
-    fontSize: 24,
+    fontSize: width * 0.08,
     fontWeight: "bold",
-    marginBottom: 20,
-    color: "#333",
-  },
-  darkTitle: {
-    color: "#eee",
+    textAlign: "center",
+    marginBottom: height * 0.03,
   },
   card: {
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  darkCard: {
-    backgroundColor: "#444",
+    borderRadius: 10,
+    padding: width * 0.04,
+    marginBottom: height * 0.03,
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2.82,
-    elevation: 4,
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: width * 0.055,
     fontWeight: "bold",
-    marginBottom: 8,
-    color: "#555",
+    marginBottom: height * 0.015,
   },
-  darkCardTitle: {
-    color: "#ddd",
+  statText: {
+    fontSize: width * 0.045,
+    marginBottom: height * 0.01,
   },
-  cardText: {
-    fontSize: 16,
-    color: "#777",
-    marginBottom: 4,
+  historyItem: {
+    paddingVertical: height * 0.015,
+    borderBottomWidth: 1,
+    marginBottom: height * 0.01,
   },
-  darkCardText: {
-    color: "#bbb",
+  historyItemContent: {
+    flexDirection: "column",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
-  italic: {
-    fontStyle: "italic",
-  },
-  progressBarBackground: {
-    backgroundColor: "#e0e0e0",
-    borderRadius: 8,
-    height: 16,
-    marginTop: 8,
-    overflow: "hidden",
-  },
-  darkProgressBarBackground: {
-    backgroundColor: "#666",
-  },
-  progressBar: {
-    backgroundColor: "#4CAF50",
-    height: 16,
-    borderRadius: 8,
-  },
-  progressItem: {
-    backgroundColor: "white",
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  darkProgressItem: {
-    backgroundColor: "#444",
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#555",
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  darkLabel: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#eee",
-  },
-  value: {
-    fontSize: 16,
-  },
-  score: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 5,
-  },
-  darkScore: {
-    fontSize: 14,
-    color: "#eee",
-    marginBottom: 5,
+  historyItemText: {
+    fontSize: width * 0.04,
+    marginBottom: height * 0.005,
   },
 });
 

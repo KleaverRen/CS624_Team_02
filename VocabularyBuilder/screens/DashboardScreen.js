@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "../contexts/ThemeContext";
 
+import dashboardStyles from "../styles/dashboardStyles";
+
 const DashboardScreen = () => {
-  const { theme } = useTheme();
+  const { theme, colors } = useTheme();
   const navigation = useNavigation();
   const [vocabularyCount, setVocabularyCount] = useState(0);
   const [lastQuizScore, setLastQuizScore] = useState(null);
@@ -34,149 +36,125 @@ const DashboardScreen = () => {
   };
 
   return (
-    <View style={theme === "dark" ? styles.darkContainer : styles.container}>
-      <Text style={theme === "dark" ? styles.darkTitle : styles.title}>
+    <View
+      style={
+        theme === "dark"
+          ? dashboardStyles.darkContainer
+          : dashboardStyles.container
+      }
+    >
+      <Text
+        style={
+          theme === "dark" ? dashboardStyles.darkTitle : dashboardStyles.title
+        }
+      >
         Dashboard
       </Text>
 
-      <View style={theme === "dark" ? styles.darkInfoCard : styles.infoCard}>
+      <View
+        style={[
+          dashboardStyles.infoCard,
+          { backgroundColor: colors.cardBackground },
+        ]}
+      >
         <Text
-          style={theme === "dark" ? styles.darkCardTitle : styles.cardTitle}
+          style={
+            theme === "dark"
+              ? dashboardStyles.darkCardTitle
+              : dashboardStyles.cardTitle
+          }
         >
           Vocabulary Overview
         </Text>
-        <Text style={theme === "dark" ? styles.darkCardText : styles.cardText}>
+        <Text
+          style={
+            theme === "dark"
+              ? dashboardStyles.darkCardText
+              : dashboardStyles.cardText
+          }
+        >
           Total words learned: {vocabularyCount}
         </Text>
         <TouchableOpacity
-          style={styles.viewMoreButton}
+          style={dashboardStyles.viewMoreButton}
           onPress={() => navigation.navigate("VocabularyTab")}
         >
-          <Text style={styles.viewMoreText}>View All</Text>
+          <Text style={dashboardStyles.viewMoreText}>View All</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={theme === "dark" ? styles.darkInfoCard : styles.infoCard}>
+      <View
+        style={[
+          dashboardStyles.infoCard,
+          { backgroundColor: colors.cardBackground },
+        ]}
+      >
         <Text
-          style={theme === "dark" ? styles.darkCardTitle : styles.cardTitle}
+          style={
+            theme === "dark"
+              ? dashboardStyles.darkCardTitle
+              : dashboardStyles.cardTitle
+          }
         >
           Recent Quiz
         </Text>
         {lastQuizScore ? (
-          <Text style={styles.cardText}>
+          <Text style={dashboardStyles.cardText}>
             Last score: {lastQuizScore.score} / {lastQuizScore.totalQuestions} (
             {new Date(lastQuizScore.date).toLocaleDateString()})
           </Text>
         ) : (
-          <Text style={styles.cardText}>No quizzes taken yet.</Text>
+          <Text
+            style={
+              theme === "dark"
+                ? dashboardStyles.darkCardText
+                : dashboardStyles.cardText
+            }
+          >
+            No quizzes taken yet.
+          </Text>
         )}
         <TouchableOpacity
-          style={styles.viewMoreButton}
+          style={dashboardStyles.viewMoreButton}
           onPress={() => navigation.navigate("QuizTab")}
         >
-          <Text style={styles.viewMoreText}>Start Quiz</Text>
+          <Text style={dashboardStyles.viewMoreText}>Start Quiz</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={theme === "dark" ? styles.darkInfoCard : styles.infoCard}>
-        <Text style={theme === "dark" ? styles.darkCardText : styles.cardTitle}>
+      <View
+        style={[
+          dashboardStyles.infoCard,
+          { backgroundColor: colors.cardBackground },
+        ]}
+      >
+        <Text
+          style={
+            theme === "dark"
+              ? dashboardStyles.darkCardText
+              : dashboardStyles.cardTitle
+          }
+        >
           Learning Progress
         </Text>
-        <Text style={theme === "dark" ? styles.darkCardText : styles.cardText}>
+        <Text
+          style={
+            theme === "dark"
+              ? dashboardStyles.darkCardText
+              : dashboardStyles.cardText
+          }
+        >
           Check your progress overview.
         </Text>
         <TouchableOpacity
-          style={styles.viewMoreButton}
+          style={dashboardStyles.viewMoreButton}
           onPress={() => navigation.navigate("ProgressTab")}
         >
-          <Text style={styles.viewMoreText}>View Progress</Text>
+          <Text style={dashboardStyles.viewMoreText}>View Progress</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#f8f8f8",
-  },
-  darkContainer: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#222",
-  },
-  darkTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-    color: "#fff",
-  },
-  darkCardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#fff",
-  },
-  darkCardText: {
-    fontSize: 16,
-    color: "#ccc",
-    marginBottom: 15,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
-    color: "#333",
-  },
-  infoCard: {
-    backgroundColor: "white",
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 20,
-    elevation: 3, // Shadow for Android
-    shadowColor: "#000", // Shadow for iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  darkInfoCard: {
-    backgroundColor: "#444",
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 20,
-    elevation: 3, // Shadow for Android
-    shadowColor: "#000", // Shadow for iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    color: "#555",
-  },
-  cardText: {
-    fontSize: 16,
-    color: "#777",
-    marginBottom: 15,
-  },
-  viewMoreButton: {
-    backgroundColor: "#007bff",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-    alignSelf: "flex-start",
-  },
-  viewMoreText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});
 
 export default DashboardScreen;
