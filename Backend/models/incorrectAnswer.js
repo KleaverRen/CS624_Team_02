@@ -1,33 +1,3 @@
-// // models/IncorrectAnswer.js
-// const mongoose = require("mongoose");
-
-// const IncorrectAnswerSchema = new mongoose.Schema({
-//   quizId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     ref: "Quiz",
-//     required: true,
-//     index: true,
-//   },
-//   word: {
-//     type: String,
-//     required: true,
-//   },
-//   userAnswer: {
-//     type: String,
-//     required: true,
-//   },
-//   correctAnswer: {
-//     type: String,
-//     required: true,
-//   },
-// });
-
-// const IncorrectAnswer = mongoose.model(
-//   "IncorrectAnswer",
-//   IncorrectAnswerSchema
-// );
-
-// module.exports = IncorrectAnswer;
 // models/IncorrectAnswer.js
 const mongoose = require("mongoose");
 
@@ -47,18 +17,18 @@ const incorrectAnswerSchema = new mongoose.Schema(
     },
     questionId: {
       // The ID of the specific question that was answered incorrectly
-      type: mongoose.Schema.Types.ObjectId, // Assuming your questions have MongoDB ObjectIds
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Question", // Optional: If you have a separate 'Question' model
       required: true,
     },
     userSelectedOptionId: {
       // The ID of the option the user chose
-      type: mongoose.Schema.Types.ObjectId, // Assuming your options have MongoDB ObjectIds
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
     correctOptionId: {
       // The ID of the correct option for that question
-      type: mongoose.Schema.Types.ObjectId, // Assuming your options have MongoDB ObjectIds
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
     // You can add more fields here if you decide to store more details, for example:

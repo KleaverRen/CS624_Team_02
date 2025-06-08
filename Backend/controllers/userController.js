@@ -79,3 +79,46 @@ exports.updateUserProfile = async (req, res) => {
       .json({ message: "Server error updating profile", error: error.message });
   }
 };
+
+// changePassword function to update user's password
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.userId; // User ID from authMiddleware
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // 1. Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid current password." });
+    }
+
+    // 2. Validate new password (optional, but recommended)
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "New password must be at least 6 characters long.",
+      });
+    }
+
+    // 3. Hash the new password and save
+    // If your User model has a pre-save hook to hash passwords,
+    // you can just assign it:
+    user.password = newPassword; // The pre-save hook will hash this
+
+    await user.save(); // This will trigger the pre-save hook if set up
+
+    res.status(200).json({ message: "Password updated successfully!" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({
+      message: "Server error changing password",
+      error: error.message,
+    });
+  }
+};

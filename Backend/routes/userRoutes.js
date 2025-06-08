@@ -11,5 +11,7 @@ router.use(authMiddleware.authenticateToken);
 router.get("/profile", userController.getUserProfile);
 // PUT /api/user/profile - Update authenticated user's profile
 router.patch("/profile", userController.updateUserProfile);
+// POST /api/user/change-password - Change authenticated user's password
+router.post("/change-password", userController.changePassword);
 
 module.exports = router;
