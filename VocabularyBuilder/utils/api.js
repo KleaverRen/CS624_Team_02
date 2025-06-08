@@ -70,6 +70,22 @@ export const updateUserProfile = (profileData) => {
   // You send the entire object as the body of the PATCH request.
   return api.patch("/user/profile", profileData);
 };
+/**
+ * API call to change the user's password.
+ * @param {object} data - Object containing currentPassword and newPassword.
+ * @param {string} data.currentPassword - The user's current password.
+ * @param {string} data.newPassword - The user's new password.
+ * @returns {Promise<AxiosResponse>} A promise that resolves to the API response.
+ */
+export const changePasswordApi = ({ currentPassword, newPassword }) => {
+  // Assuming your backend expects a POST request to '/user/change-password'
+  // with currentPassword and newPassword in the request body.
+  return api.post("/user/change-password", {
+    currentPassword,
+    newPassword,
+  });
+};
+
 // --- Vocabulary Endpoints ---
 export const getVocabulary = () => api.get("/words");
 export const addVocabularyWord = (word, definition) =>

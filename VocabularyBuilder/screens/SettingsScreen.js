@@ -17,6 +17,8 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 import LogoutConfirmationModal from "../components/LogoutConfirmationModal";
 import UpdateProfileModal from "../components/UpdateProfileModal";
+import AboutUsModal from "../components/AboutUsModal";
+import ChangePasswordModal from "../components/ChangePasswordModal"; // Import the new modal
 
 const SettingsScreen = () => {
   const { theme, colors, toggleTheme } = useTheme();
@@ -24,6 +26,11 @@ const SettingsScreen = () => {
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
   const [isUpdateProfileModalVisible, setUpdateProfileModalVisible] =
     useState(false);
+  const [isAboutUsModalVisible, setAboutUsModalVisible] = useState(false);
+  // State for Change Password Modal
+  const [isChangePasswordModalVisible, setChangePasswordModalVisible] =
+    useState(false);
+
   const [userProfile, setUserProfile] = useState(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
@@ -54,14 +61,12 @@ const SettingsScreen = () => {
     setLogoutModalVisible(true);
   };
 
-  // This handler will be passed to the LogoutConfirmationModal
   const handleConfirmLogout = () => {
-    setLogoutModalVisible(false); // Close modal first
-    logout(); // Call the logout function from AuthContext
+    setLogoutModalVisible(false);
+    logout();
   };
 
   const handleCloseLogoutModal = () => {
-    // Renamed from handleCancelLogout for clarity as it's just closing
     setLogoutModalVisible(false);
   };
 
@@ -106,6 +111,24 @@ const SettingsScreen = () => {
       console.error("Error saving daily word goal:", error);
       Alert.alert("Error", "Failed to save daily word goal.");
     }
+  };
+
+  // Handler to open Change Password Modal
+  const handleChangePassword = () => {
+    setChangePasswordModalVisible(true);
+  };
+
+  // Handler to close Change Password Modal
+  const handleCloseChangePasswordModal = () => {
+    setChangePasswordModalVisible(false);
+  };
+
+  const handleAboutUs = () => {
+    setAboutUsModalVisible(true);
+  };
+
+  const handleCloseAboutUsModal = () => {
+    setAboutUsModalVisible(false);
   };
 
   if (isLoadingProfile) {
@@ -155,6 +178,7 @@ const SettingsScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* App Preferences Section */}
       <View style={[styles.section, theme === "dark" && styles.darkSection]}>
         <Text
           style={[
@@ -178,6 +202,7 @@ const SettingsScreen = () => {
         </View>
       </View>
 
+      {/* Learning Goals Section */}
       <View style={[styles.section, theme === "dark" && styles.darkSection]}>
         <Text
           style={[
@@ -234,29 +259,63 @@ const SettingsScreen = () => {
           <Text style={styles.actionButtonText}>Change Frequency</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Account and Information Section */}
+      <View style={[styles.section, theme === "dark" && styles.darkSection]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            theme === "dark" && styles.darkSectionTitle,
+          ]}
+        >
+          Account and Information
+        </Text>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={handleChangePassword} // This will now open the Change Password modal
+        >
+          <Text style={styles.actionButtonText}>Change Password</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.marginTop]}
+          onPress={handleAboutUs}
+        >
+          <Text style={styles.actionButtonText}>About Us</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.logoutButtonContainer}>
         <TouchableOpacity
           style={styles.logoutButton}
-          onPress={handleShowLogoutModal} // This now just sets the state to show the modal
+          onPress={handleShowLogoutModal}
         >
           <Text style={styles.actionButtonText}>LOGOUT</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Logout Confirmation Modal - Now a separate component */}
+      {/* Modals */}
       <LogoutConfirmationModal
         isVisible={isLogoutModalVisible}
-        onClose={handleCloseLogoutModal} // Pass a function to close the modal
-        onConfirmLogout={handleConfirmLogout} // Pass the function to perform logout
+        onClose={handleCloseLogoutModal}
+        onConfirmLogout={handleConfirmLogout}
       />
 
-      {/* Update Profile Modal */}
       <UpdateProfileModal
         isVisible={isUpdateProfileModalVisible}
         onClose={handleCloseUpdateProfileModal}
         userProfile={userProfile}
         onUpdateSuccess={handleUpdateProfileSuccess}
         theme={theme}
+      />
+
+      <AboutUsModal
+        isVisible={isAboutUsModalVisible}
+        onClose={handleCloseAboutUsModal}
+      />
+
+      <ChangePasswordModal
+        isVisible={isChangePasswordModalVisible}
+        onClose={handleCloseChangePasswordModal}
       />
     </ScrollView>
   );
@@ -407,9 +466,12 @@ const styles = StyleSheet.create({
   },
   themeRow: {
     flexDirection: "row",
-    justifyContent: "space-between", // Distributes items to ends of the row
-    alignItems: "center", // Aligns items vertically in the center
-    marginBottom: 8, // Add some bottom margin for spacing if needed
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  marginTop: {
+    marginTop: 10,
   },
 });
 

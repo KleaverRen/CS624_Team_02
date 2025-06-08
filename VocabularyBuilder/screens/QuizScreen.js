@@ -274,7 +274,9 @@ const QuizScreen = () => {
             setQuizResult(null); // Clear quiz results to show start screen
           }}
         >
-          <Text style={styles.backToHomeButtonText}>Back to Home</Text>
+          <Text style={[styles.backToHomeButtonText, { color: colors.text }]}>
+            Back to Home
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -393,7 +395,9 @@ const QuizScreen = () => {
           onPress={handlePreviousQuestion}
           disabled={currentQuestionIndex === 0}
         >
-          <Text style={styles.navButtonText}>Previous</Text>
+          <Text style={[styles.navButtonText, { color: colors.buttonText }]}>
+            Previous
+          </Text>
         </TouchableOpacity>
 
         {!isLastQuestion ? (
@@ -401,7 +405,9 @@ const QuizScreen = () => {
             style={[styles.navButton, { backgroundColor: colors.primary }]}
             onPress={handleNextQuestion}
           >
-            <Text style={styles.navButtonText}>Next</Text>
+            <Text style={[styles.navButtonText, { color: colors.buttonText }]}>
+              Next
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -409,7 +415,7 @@ const QuizScreen = () => {
             onPress={handleSubmitQuiz}
             disabled={isSubmitting}
           >
-            <Text style={styles.navButtonText}>
+            <Text style={[styles.navButtonText, { color: colors.buttonText }]}>
               {isSubmitting ? "Submitting..." : "Submit Quiz"}
             </Text>
           </TouchableOpacity>
@@ -500,7 +506,6 @@ const styles = StyleSheet.create({
     marginHorizontal: width * 0.01,
   },
   navButtonText: {
-    color: "white",
     fontSize: width * 0.045,
     fontWeight: "bold",
   },
@@ -568,7 +573,6 @@ const styles = StyleSheet.create({
     marginTop: height * 0.02,
   },
   backToHomeButtonText: {
-    color: "white",
     fontSize: width * 0.05,
     fontWeight: "bold",
   },
