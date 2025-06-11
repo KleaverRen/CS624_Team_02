@@ -395,7 +395,7 @@ const QuizScreen = () => {
           onPress={handlePreviousQuestion}
           disabled={currentQuestionIndex === 0}
         >
-          <Text style={[styles.navButtonText, { color: colors.buttonText }]}>
+          <Text style={[styles.navButtonText, { color: colors.text }]}>
             Previous
           </Text>
         </TouchableOpacity>
@@ -405,7 +405,7 @@ const QuizScreen = () => {
             style={[styles.navButton, { backgroundColor: colors.primary }]}
             onPress={handleNextQuestion}
           >
-            <Text style={[styles.navButtonText, { color: colors.buttonText }]}>
+            <Text style={[styles.navButtonText, { color: colors.text }]}>
               Next
             </Text>
           </TouchableOpacity>
